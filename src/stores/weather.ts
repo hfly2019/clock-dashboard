@@ -5,7 +5,9 @@ import { ref, watch } from 'vue'
 import { searchCities as searchCitiesApi } from '../api/geocoding'
 import { getCurrentPosition, reverseGeocode as reverseGeocodeApi } from '../api/location'
 import { fetchAirQualityData, fetchWeatherData } from '../api/weather'
+import { DEFAULT_CITY, DEFAULT_LAT, DEFAULT_LON } from '../constants'
 import { i18n } from '../i18n'
+import { cleanDisplayName, extractSimplifiedChinese } from '../utils/string'
 import { mapWmoCode } from '../utils/weather'
 import { useConfigStore } from './config'
 
@@ -17,9 +19,9 @@ export const useWeatherStore = defineStore('weather', () => {
 
   // --- Persistent State ---
   const locationMode = ref<LocationMode>('auto')
-  const customLat = ref(39.9)
-  const customLon = ref(116.4)
-  const customCity = ref('北京市')
+  const customLat = ref(DEFAULT_LAT)
+  const customLon = ref(DEFAULT_LON)
+  const customCity = ref(DEFAULT_CITY)
   const refreshInterval = ref(20)
   const showRainEffect = ref(true)
   const showThunderEffect = ref(true)
@@ -64,22 +66,6 @@ export const useWeatherStore = defineStore('weather', () => {
     }
   }
 
-  function extractSimplifiedChinese(text: string): string {
-    if (!text) return text
-    const parts = text.split(';')
-    if (parts.length > 1) {
-      return parts[0].trim()
-    }
-    return text
-  }
-
-  function cleanDisplayName(displayName: string): string {
-    if (!displayName) return displayName
-    return displayName
-      .split(',')
-      .map(part => extractSimplifiedChinese(part))
-      .join(', ')
-  }
 
   async function searchCities(query: string): Promise<CitySearchResult[]> {
     try {
@@ -121,14 +107,14 @@ export const useWeatherStore = defineStore('weather', () => {
       if (results.length > 0) {
         return { lat: results[0].latitude, lon: results[0].longitude }
       }
-      return { lat: 39.9, lon: 116.4 }
+      return { lat: DEFAULT_LAT, lon: DEFAULT_LON }
     }
 
     if (cachedCoords.value) {
       return { lat: cachedCoords.value.lat, lon: cachedCoords.value.lon }
     }
 
-    return { lat: 39.9, lon: 116.4 }
+    return { lat: DEFAULT_LAT, lon: DEFAULT_LON }
   }
 
   async function reverseGeocode(lat: number, lon: number) {
@@ -179,34 +165,27 @@ export const useWeatherStore = defineStore('weather', () => {
       await fetchWeather(lat, lon)
       return
     }
+    let lat = DEFAULT_LAT
+    let lon = DEFAULT_LON
+    let city = i18n.global.t('weather.status.defaultCity')
+
     try {
       const coords = await getCurrentPosition(5000, language.value)
       const locationData = await reverseGeocodeApi(coords.latitude, coords.longitude, language.value)
-      const cityName = locationData.locality || locationData.city || locationData.principalSubdivision || i18n.global.t('weather.status.unknownCity')
-      locationText.value = cityName
-      cachedCoords.value = {
-        lat: coords.latitude,
-        lon: coords.longitude,
-        city: cityName,
-      }
-      await fetchWeather(coords.latitude, coords.longitude)
+      lat = coords.latitude
+      lon = coords.longitude
+      city = locationData.locality || locationData.city || locationData.principalSubdivision || i18n.global.t('weather.status.unknownCity')
     }
     catch (error) {
-      try {
-        locationText.value = i18n.global.t('weather.status.defaultCity')
-        const defaultCity = i18n.global.t('weather.status.defaultCity')
-        cachedCoords.value = {
-          lat: 39.9,
-          lon: 116.4,
-          city: defaultCity,
-        }
-        await fetchWeather(39.9, 116.4)
-      }
-      catch (err) {
-        weatherInfo.value.text = i18n.global.t('weather.status.updateTimeout')
-        loading.value = false
-      }
+      console.warn('Geolocation failed, using default coordinates.')
     }
+
+    locationText.value = city
+    cachedCoords.value = { lat, lon, city }
+    
+    await fetchWeather(lat, lon).catch(() => {
+      weatherInfo.value.text = i18n.global.t('weather.status.updateTimeout')
+    })
   }
 
   // 模式切换同步清理

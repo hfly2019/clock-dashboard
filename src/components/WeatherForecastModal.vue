@@ -40,7 +40,7 @@ const forecastDays = computed<ForecastDay[]>(() => {
   return daily.time
     .slice(0, 5)
     .map((time: string, index: number) => {
-      const date = new Date(time)
+      const date = new Date(`${time}T00:00:00`)
       const isToday = index === 0
       const isTomorrow = index === 1
 

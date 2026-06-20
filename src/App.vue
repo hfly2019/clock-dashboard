@@ -1,7 +1,7 @@
 <script setup lang="ts">
-import { useIdle, useMagicKeys } from '@vueuse/core'
+import { useIdle, useMagicKeys, useDocumentVisibility } from '@vueuse/core'
 import { storeToRefs } from 'pinia'
-import { computed, ref, watch, watchEffect } from 'vue'
+import { computed, watch, watchEffect, ref, onMounted } from 'vue'
 import NewYearEgg from './components/NewYearEgg.vue'
 import SettingsDrawer from './components/SettingsDrawer.vue'
 import WeatherEffects from './components/WeatherEffects.vue'
@@ -12,11 +12,27 @@ import { isIpadIOS15OrLower } from './utils/device'
 import CalendarView from './views/CalendarView.vue'
 import ClockWeatherView from './views/ClockWeatherView.vue'
 import SmartHomeView from './views/SmartHomeView.vue'
+import AgentView from './views/AgentView.vue'
 
 const configStore = useConfigStore()
-const { showDrawer, layoutConfig } = storeToRefs(configStore)
+const { showDrawer, layoutConfig, currentPage, haConfig } = storeToRefs(configStore)
 
-const currentPage = ref(1)
+onMounted(() => {
+  // 临时辅助：为用户自动写入提取出的真实设备 ID
+  if (!haConfig.value.entities || haConfig.value.entities.length === 0 || haConfig.value.entities.some(e => !e.id || !e.id.includes('.'))) {
+    haConfig.value.entities = [
+      { id: 'switch.cuco_cn_675453796_v3_on_p_2_1', name: '楼顶电源' },
+      { id: 'switch.cuco_cn_571390427_v3_on_p_2_1', name: '燃气热水器' },
+      { id: 'switch.qmi_cn_1082536934_psv3_on_p_2_1', name: '音箱插座' },
+      { id: 'switch.qmi_cn_1003563076_psv3_on_p_2_1', name: '书桌右插座' },
+      { id: 'switch.qmi_cn_1003563538_psv3_on_p_2_1', name: '书桌左插座' },
+      { id: 'switch.qmi_cn_1133751403_psv3_on_p_2_1', name: '3D打印机' },
+      { id: 'switch.qmi_cn_1048453338_psv3_on_p_2_1', name: '小米插线板' }
+    ]
+  }
+})
+
+const visibility = useDocumentVisibility()
 const calendarRef = ref<any>(null)
 
 const weatherStore = useWeatherStore()
@@ -26,6 +42,8 @@ const isSwiping = ref(false)
 
 // 判断是否需要渲染天气特效组件
 const shouldShowWeatherEffects = computed(() => {
+  if (layoutConfig.value.powerSavingMode || visibility.value !== 'visible') return false
+  if (!layoutConfig.value.enableAnimations) return false
   if (!weatherData.value || layoutConfig.value.clockOnlyMode) return false
 
   const code = weatherData.value.current?.weather_code ?? -1
@@ -72,7 +90,7 @@ function handleTouchEnd(e: TouchEvent) {
       isSwiping.value = false
     }, 50)
 
-    if (diff > 0 && currentPage.value < 2)
+    if (diff > 0 && currentPage.value < 3)
       goToPage(currentPage.value + 1)
     else if (diff < 0 && currentPage.value > 0)
       goToPage(currentPage.value - 1)
@@ -91,7 +109,7 @@ function handleMouseUp(e: MouseEvent) {
       isSwiping.value = false
     }, 50)
 
-    if (diff > 0 && currentPage.value < 2)
+    if (diff > 0 && currentPage.value < 3)
       goToPage(currentPage.value + 1)
     else if (diff < 0 && currentPage.value > 0)
       goToPage(currentPage.value - 1)
@@ -121,7 +139,7 @@ watchEffect(() => {
   if (left.value && currentPage.value > 0) {
     goToPage(currentPage.value - 1)
   }
-  if (right.value && currentPage.value < 2) {
+  if (right.value && currentPage.value < 3) {
     goToPage(currentPage.value + 1)
   }
 })
@@ -143,14 +161,20 @@ watch(language, (nextLocale) => {
     @click.capture="handleGlobalClick"
   >
     <!-- Background Decoration -->
-    <template v-if="!isIpadIOS15OrLower()">
-      <div class="absolute top-1/4 left-1/4 w-96 h-96 bg-blue-900/10 rounded-full blur-3xl pointer-events-none" />
-      <div class="absolute bottom-1/4 right-1/4 w-96 h-96 bg-purple-900/10 rounded-full blur-3xl pointer-events-none" />
+    <template v-if="!isIpadIOS15OrLower() && (!layoutConfig.powerSavingMode || visibility === 'visible')">
+      <div 
+        class="absolute top-1/4 left-1/4 w-96 h-96 bg-blue-900/10 rounded-full blur-3xl pointer-events-none transition-opacity duration-1000"
+        :class="{'animate-breathing': layoutConfig.enableAnimations && visibility === 'visible'}" 
+      />
+      <div 
+        class="absolute bottom-1/4 right-1/4 w-96 h-96 bg-purple-900/10 rounded-full blur-3xl pointer-events-none transition-opacity duration-1000"
+        :class="{'animate-breathing-delayed': layoutConfig.enableAnimations && visibility === 'visible'}" 
+      />
     </template>
 
     <div
       class="main-slider flex h-full transition-transform duration-700 cubic-bezier"
-      :style="{ transform: `translateX(-${currentPage * 100}vw)`, width: '300vw' }"
+      :style="{ transform: `translateX(-${currentPage * 100}vw)`, width: '400vw' }"
     >
       <div class="slide-page w-screen h-screen flex items-center justify-center flex-shrink-0">
         <SmartHomeView v-if="currentPage === 0" />
@@ -161,6 +185,9 @@ watch(language, (nextLocale) => {
       <div class="slide-page w-screen h-screen flex items-center justify-center flex-shrink-0">
         <CalendarView v-if="currentPage === 2" ref="calendarRef" />
       </div>
+      <div class="slide-page w-screen h-screen flex items-center justify-center flex-shrink-0">
+        <AgentView v-if="currentPage === 3" />
+      </div>
     </div>
 
     <SettingsDrawer />
@@ -168,11 +195,40 @@ watch(language, (nextLocale) => {
     <NewYearEgg />
 
     <WeatherEffects v-if="shouldShowWeatherEffects" />
+
+    <!-- Pagination Indicators -->
+    <div 
+      v-if="layoutConfig.showPagination && !layoutConfig.clockOnlyMode"
+      class="absolute bottom-[4vh] left-1/2 -translate-x-1/2 flex items-center space-x-[1.5vh] z-50 transition-opacity duration-500"
+      :class="{'opacity-0 pointer-events-none': idle}"
+    >
+      <div 
+        v-for="pageIndex in 4" 
+        :key="pageIndex"
+        class="h-[0.8vh] rounded-full transition-all duration-500 cursor-pointer backdrop-blur-md border border-white/20"
+        :class="currentPage === pageIndex - 1 ? 'w-[4vh] bg-white/60' : 'w-[1.2vh] bg-white/20 hover:bg-white/40'"
+        @click.stop="goToPage(pageIndex - 1)"
+      ></div>
+    </div>
   </div>
 </template>
 
 <style scoped>
 .cubic-bezier {
   transition-timing-function: cubic-bezier(0.23, 1, 0.32, 1);
+}
+
+@keyframes breathing {
+  0%, 100% { opacity: 0.6; transform: scale(1); }
+  50% { opacity: 1; transform: scale(1.05); }
+}
+
+.animate-breathing {
+  animation: breathing 8s ease-in-out infinite;
+}
+
+.animate-breathing-delayed {
+  animation: breathing 8s ease-in-out infinite;
+  animation-delay: -4s;
 }
 </style>

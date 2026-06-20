@@ -1,6 +1,8 @@
 import type { LunarInfo } from '../types'
-import { onMounted, onUnmounted, ref } from 'vue'
+import { onMounted, onUnmounted, ref, watch } from 'vue'
+import { useDocumentVisibility } from '@vueuse/core'
 import { getLunarDate } from '../utils/lunar'
+import { useConfigStore } from '../stores/config'
 
 export function useTime(options: { is24Hour?: boolean | { value: boolean } } = {}) {
   const now = ref(new Date())
@@ -12,8 +14,10 @@ export function useTime(options: { is24Hour?: boolean | { value: boolean } } = {
   const s2 = ref(0)
   const lunar = ref<LunarInfo>(getLunarDate(new Date()))
   const lastUpdateDate = ref(new Date().toDateString())
+  const visibility = useDocumentVisibility()
+  const configStore = useConfigStore()
 
-  let timer: number
+  let timer: number | undefined
 
   const update = () => {
     const d = new Date()
@@ -44,14 +48,41 @@ export function useTime(options: { is24Hour?: boolean | { value: boolean } } = {
     }
   }
 
+  const startTimer = () => {
+    if (!timer) timer = window.setInterval(update, 1000)
+  }
+
+  const stopTimer = () => {
+    if (timer) {
+      clearInterval(timer)
+      timer = undefined
+    }
+  }
+
+  watch([visibility, () => configStore.currentPage], ([vis, page]) => {
+    // Stop the timer if we are in power saving mode, or if the document is hidden.
+    // Also, if we're not on the clock page (page 1) and not in clockOnlyMode, stop the timer.
+    const isVisible = vis === 'visible'
+    const isActive = page === 1 || configStore.layoutConfig.clockOnlyMode
+    
+    if (isVisible && isActive) {
+      update() // refresh immediately upon becoming active
+      startTimer()
+    } else {
+      stopTimer()
+    }
+  })
+
   onMounted(() => {
     update()
-    timer = window.setInterval(update, 1000)
+    if (visibility.value === 'visible' && (configStore.currentPage === 1 || configStore.layoutConfig.clockOnlyMode)) {
+      startTimer()
+    }
     lunar.value = getLunarDate(new Date())
   })
 
   onUnmounted(() => {
-    clearInterval(timer)
+    stopTimer()
   })
 
   return {

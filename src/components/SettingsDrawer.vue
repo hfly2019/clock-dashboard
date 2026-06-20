@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { Calendar, Clock, CloudSun, Github, Globe, Home, Save, X } from 'lucide-vue-next'
+import { Bot, Calendar, Clock, CloudSun, Github, Globe, Home, Save, X } from 'lucide-vue-next'
 import { storeToRefs } from 'pinia'
 import { computed, ref, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
@@ -11,6 +11,7 @@ import ClockSettings from './settings/ClockSettings.vue'
 import GeneralSettings from './settings/GeneralSettings.vue'
 import SmartHomeSettings from './settings/SmartHomeSettings.vue'
 import WeatherSettings from './settings/WeatherSettings.vue'
+import AgentSettings from './settings/AgentSettings.vue'
 
 const VERSION = packageJson.version
 
@@ -24,6 +25,7 @@ const tabs = [
   { id: 'weather', labelKey: 'tabs.weather', icon: CloudSun },
   { id: 'calendar', labelKey: 'tabs.calendar', icon: Calendar },
   { id: 'smart', labelKey: 'tabs.smart', icon: Home },
+  { id: 'agent', labelKey: 'tabs.agent', icon: Bot },
 ] as const
 
 const activeTabLabel = computed(() => t(`tabs.${activeTab.value}`))
@@ -33,6 +35,7 @@ const weatherSettingsRef = ref<InstanceType<typeof WeatherSettings> | null>(null
 const calendarSettingsRef = ref<InstanceType<typeof CalendarSettings> | null>(null)
 const smartHomeSettingsRef = ref<InstanceType<typeof SmartHomeSettings> | null>(null)
 const generalSettingsRef = ref<InstanceType<typeof GeneralSettings> | null>(null)
+const agentSettingsRef = ref<InstanceType<typeof AgentSettings> | null>(null)
 
 watch(showDrawer, (isShowing) => {
   if (isShowing) {
@@ -41,6 +44,7 @@ watch(showDrawer, (isShowing) => {
     weatherSettingsRef.value?.reset()
     calendarSettingsRef.value?.reset()
     smartHomeSettingsRef.value?.reset()
+    agentSettingsRef.value?.reset()
   }
 })
 
@@ -50,6 +54,7 @@ function saveAll() {
   weatherSettingsRef.value?.save()
   calendarSettingsRef.value?.save()
   smartHomeSettingsRef.value?.save()
+  agentSettingsRef.value?.save()
   showDrawer.value = false
 }
 
@@ -135,6 +140,7 @@ function closeDrawer() {
             <WeatherSettings v-if="activeTab === 'weather'" ref="weatherSettingsRef" />
             <CalendarSettings v-if="activeTab === 'calendar'" ref="calendarSettingsRef" />
             <SmartHomeSettings v-if="activeTab === 'smart'" ref="smartHomeSettingsRef" />
+            <AgentSettings v-if="activeTab === 'agent'" ref="agentSettingsRef" />
           </div>
         </div>
       </div>

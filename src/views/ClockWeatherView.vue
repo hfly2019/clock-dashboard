@@ -4,6 +4,7 @@ import { Settings } from 'lucide-vue-next'
 import { storeToRefs } from 'pinia'
 import { computed, ref, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
+import DateDisplay from '../components/DateDisplay.vue'
 import Digit from '../components/Digit.vue'
 import Weather from '../components/Weather.vue'
 import { useTime } from '../hooks/useTime'
@@ -26,22 +27,6 @@ function toggleSeconds() {
   clockConfig.value.showSeconds = !clockConfig.value.showSeconds
 }
 
-const weekdayLabel = computed(() => {
-  const formatter = new Intl.DateTimeFormat(locale.value, { weekday: 'long' })
-  return formatter.format(now.value)
-})
-
-const yearMonthLabel = computed(() => {
-  const date = now.value
-  if (locale.value === 'en-US') {
-    const month = String(date.getMonth() + 1).padStart(2, '0')
-    return `${month}-${date.getFullYear()}`
-  }
-  const formatter = new Intl.DateTimeFormat(locale.value, { year: 'numeric', month: 'long' })
-  return formatter.format(date)
-})
-
-const showLunar = computed(() => locale.value !== 'en-US')
 
 const baseDelay = computed(() => {
   return clockConfig.value.showSeconds ? 0 : -2
@@ -71,25 +56,7 @@ watch(idle, (newIdle) => {
 
     <!-- 日期与农历 -->
     <div v-if="!layoutConfig.clockOnlyMode" class="flex flex-col sm:flex-row items-center md:items-start w-full justify-center">
-      <div class="flex items-center">
-        <div class="date-day-big">
-          {{ now.getDate() }}
-        </div>
-        <div class="flex flex-col mr-[8vh]">
-          <span class="weekday-label">
-            {{ weekdayLabel }}
-          </span>
-          <span class="year-label">
-            {{ yearMonthLabel }}
-          </span>
-        </div>
-        <div v-if="showLunar" class="flex flex-col">
-          <div class="lunar-date-label">
-            {{ lunar.date }}<span v-if="lunar.festival">·{{ lunar.festival }}</span>
-          </div>
-          <span class="lunar-year-label">{{ lunar.year }}({{ lunar.yearShengxiao }})年{{ lunar.month }}月</span>
-        </div>
-      </div>
+      <DateDisplay :now="now" :lunar="lunar" />
     </div>
 
     <!-- 时钟显示 -->
@@ -170,46 +137,6 @@ watch(idle, (newIdle) => {
   max-width: 100vw;
 }
 
-.date-day-big {
-  font-size: 16vh;
-  line-height: 1.1;
-  font-weight: 800;
-  background: linear-gradient(to bottom, #ffffff, rgba(255, 255, 255, 0.7));
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
-  margin-right: 2vh;
-}
-
-.weekday-label {
-  font-size: 6vh;
-  letter-spacing: 0.2em;
-  line-height: 1.1;
-  opacity: 0.9;
-}
-
-.year-label {
-  font-size: 4.6vh;
-  letter-spacing: 0.2em;
-  line-height: 1.1;
-  opacity: 0.8;
-  margin-top: 0.5vh;
-}
-
-.lunar-date-label {
-  font-size: 6vh;
-  letter-spacing: 0.2em;
-  line-height: 1.1;
-  opacity: 0.9;
-}
-
-.lunar-year-label {
-  font-size: 4.6vh;
-  letter-spacing: 0.2em;
-  line-height: 1.1;
-  opacity: 0.8;
-  margin-top: 0.5vh;
-}
-
 .clock-display {
   display: flex;
   flex-direction: row !important;
@@ -217,23 +144,23 @@ watch(idle, (newIdle) => {
   align-items: center;
   justify-content: center;
   font-family: 'SFCompactRounded', 'Huninn', sans-serif;
-  font-size: 54vh;
+  font-size: clamp(10rem, 54vh, 60rem);
   margin-top: 6vh;
   margin-bottom: 6vh;
 }
 
 .clock-display.with-seconds {
-  font-size: 38vh;
+  font-size: clamp(6rem, 38vh, 40rem);
 }
 
 .clock-only-mode .clock-display {
-  font-size: 44vw;
+  font-size: clamp(12rem, 44vw, 70rem);
   margin-top: 0;
   margin-bottom: 0;
 }
 
 .clock-only-mode .clock-display.with-seconds {
-  font-size: 30vw;
+  font-size: clamp(8rem, 30vw, 50rem);
   margin-top: 0;
   margin-bottom: 0;
 }

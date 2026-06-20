@@ -54,7 +54,7 @@ defineExpose({ save, reset })
 
     <section class="space-y-4">
       <h4 class="text-white/60 mb-4 uppercase tracking-widest text-sm font-medium">
-        {{ t('generalSettings.layout') }}
+        {{ t('generalSettings.layout') }} & UI
       </h4>
       <div
         class="settings-toggle-card"
@@ -65,6 +65,30 @@ defineExpose({ save, reset })
         <div class="toggle-switch">
           <div class="toggle-dot" />
         </div>
+      </div>
+      <div
+        class="settings-toggle-card"
+        :class="{ active: layoutDraft.powerSavingMode }"
+        @click="layoutDraft.powerSavingMode = !layoutDraft.powerSavingMode"
+      >
+        <span class="font-medium">Extreme Power Saving</span>
+        <div class="toggle-switch"><div class="toggle-dot" /></div>
+      </div>
+      <div
+        class="settings-toggle-card"
+        :class="{ active: layoutDraft.enableAnimations }"
+        @click="layoutDraft.enableAnimations = !layoutDraft.enableAnimations"
+      >
+        <span class="font-medium">Dynamic Background & Effects</span>
+        <div class="toggle-switch"><div class="toggle-dot" /></div>
+      </div>
+      <div
+        class="settings-toggle-card"
+        :class="{ active: layoutDraft.showPagination }"
+        @click="layoutDraft.showPagination = !layoutDraft.showPagination"
+      >
+        <span class="font-medium">Show Pagination Indicators</span>
+        <div class="toggle-switch"><div class="toggle-dot" /></div>
       </div>
     </section>
   </div>

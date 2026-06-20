@@ -2,6 +2,8 @@
 import { Droplets, Leaf, PersonStanding, Sun } from 'lucide-vue-next'
 import { storeToRefs } from 'pinia'
 import { computed, onMounted, onUnmounted, ref, watch } from 'vue'
+import { useDocumentVisibility } from '@vueuse/core'
+import { useConfigStore } from '../stores/config'
 import { useI18n } from 'vue-i18n'
 import { useWeatherStore } from '../stores/weather'
 import { getAqiInfo } from '../utils/weather'
@@ -21,17 +23,33 @@ function closeForecast() {
   showForecastModal.value = false
 }
 
-let weatherTimer: number
+const configStore = useConfigStore()
+const visibility = useDocumentVisibility()
+
+let weatherTimer: number | undefined
 
 const aqiInfo = computed(() => getAqiInfo(airQualityData.value?.current?.us_aqi))
 
 function setupTimer() {
-  if (weatherTimer) clearInterval(weatherTimer)
-  weatherTimer = window.setInterval(weatherStore.updateWeather, refreshInterval.value * 60 * 1000)
+  if (weatherTimer) {
+    clearInterval(weatherTimer)
+    weatherTimer = undefined
+  }
+  
+  const isVisible = visibility.value === 'visible'
+  const isActive = configStore.currentPage === 1 || configStore.layoutConfig.clockOnlyMode
+  
+  if (isVisible && isActive) {
+    weatherTimer = window.setInterval(weatherStore.updateWeather, refreshInterval.value * 60 * 1000)
+  }
 }
 
-watch(refreshInterval, () => {
+watch([refreshInterval, visibility, () => configStore.currentPage], () => {
   setupTimer()
+  // Trigger an immediate update if becoming visible/active
+  if (visibility.value === 'visible' && (configStore.currentPage === 1 || configStore.layoutConfig.clockOnlyMode)) {
+    weatherStore.updateWeather()
+  }
 })
 
 onMounted(() => {
@@ -40,7 +58,7 @@ onMounted(() => {
 })
 
 onUnmounted(() => {
-  clearInterval(weatherTimer)
+  if (weatherTimer) clearInterval(weatherTimer)
 })
 </script>
 
@@ -79,10 +97,10 @@ onUnmounted(() => {
       </div>
       <div class="flex flex-col items-end justify-between font-medium">
         <span id="temp-max" class="text-red-200">
-          {{ weatherData ? Math.round(Math.max(...weatherData.hourly.temperature_2m)) : '--' }}°
+          {{ weatherData ? Math.round(weatherData.daily.temperature_2m_max?.[0]) : '--' }}°
         </span>
         <span id="temp-min" class="text-blue-200">
-          {{ weatherData ? Math.round(Math.min(...weatherData.hourly.temperature_2m)) : '--' }}°
+          {{ weatherData ? Math.round(weatherData.daily.temperature_2m_min?.[0]) : '--' }}°
         </span>
       </div>
     </div>

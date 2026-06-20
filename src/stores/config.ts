@@ -7,7 +7,8 @@ const defaultLanguage = normalizeLocale(typeof navigator !== 'undefined' ? navig
 
 export const useConfigStore = defineStore('config', () => {
   const showDrawer = ref(false)
-  const activeTab = ref<'general' | 'clock' | 'weather' | 'calendar' | 'smart'>('general')
+  const activeTab = ref<'general' | 'clock' | 'weather' | 'calendar' | 'smart' | 'agent'>('general')
+  const currentPage = ref(1)
   const language = ref(defaultLanguage)
 
   const haLayout = ref({
@@ -45,6 +46,29 @@ export const useConfigStore = defineStore('config', () => {
   const layoutConfig = ref({
     /** 仅显示时钟 */
     clockOnlyMode: false,
+    /** 极致省电模式 */
+    powerSavingMode: false,
+    /** 开启全局动效 (呼吸灯背景等) */
+    enableAnimations: true,
+    /** 显示底部翻页指示器 */
+    showPagination: true,
+  })
+
+  const agentConfig = ref({
+    /** Hermes API 基础地址 */
+    url: 'http://127.0.0.1:9119',
+    /** Session Token (可选) */
+    token: '',
+    /** 是否显示极客实时终端底栏 */
+    showLiveTerminal: false,
+    /** 可见模块开关 */
+    visibleModules: {
+      channels: true,
+      analytics: true,
+      skills: true,
+      tasks: true,
+      plugins: true
+    }
   })
 
   return {
@@ -53,12 +77,14 @@ export const useConfigStore = defineStore('config', () => {
     clockConfig,
     calendarConfig,
     layoutConfig,
+    agentConfig,
     showDrawer,
     activeTab,
+    currentPage,
     language,
   }
 }, {
   persist: {
-    omit: ['showDrawer', 'activeTab'],
+    omit: ['showDrawer', 'activeTab', 'currentPage'],
   },
 })
